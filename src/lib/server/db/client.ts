@@ -1,41 +1,13 @@
-import Database from 'better-sqlite3';
-import { existsSync, mkdirSync, readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
+import type Database from 'better-sqlite3';
+import { sqlite, closeDb as closeDrizzleDb } from './drizzle';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = process.env.DATABASE_PATH || join(__dirname, '../../../../data/calendar.db');
-
-// Ensure database directory exists
-const dbDir = dirname(DB_PATH);
-if (!existsSync(dbDir)) {
-	mkdirSync(dbDir, { recursive: true });
-}
-
-let db: Database.Database | null = null;
-
-function initializeSchema(): void {
-	if (!db) return;
-	const schemaPath = join(__dirname, 'schema.sql');
-	const schema = readFileSync(schemaPath, 'utf-8');
-	db.exec(schema);
-}
-
+// Re-use the sqlite connection from drizzle (schema already initialized there)
 export function getDb(): Database.Database {
-	if (!db) {
-		db = new Database(DB_PATH);
-		db.pragma('journal_mode = WAL');
-		db.pragma('foreign_keys = ON');
-		initializeSchema();
-	}
-	return db;
+	return sqlite;
 }
 
 export function closeDb(): void {
-	if (db) {
-		db.close();
-		db = null;
-	}
+	closeDrizzleDb();
 }
 
 export function generateId(): string {
