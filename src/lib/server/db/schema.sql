@@ -1,34 +1,43 @@
--- Users
+-- Users (Better Auth compatible)
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
-    timezone TEXT DEFAULT 'UTC',
-    role TEXT DEFAULT 'customer', -- admin, staff, customer
-    email_verified INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    email TEXT UNIQUE NOT NULL,
+    email_verified INTEGER DEFAULT 0 NOT NULL,
+    image TEXT,
+    created_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    updated_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    role TEXT DEFAULT 'admin',
+    timezone TEXT DEFAULT 'UTC'
 );
 
 -- Sessions (Better Auth)
 CREATE TABLE IF NOT EXISTS session (
     id TEXT PRIMARY KEY,
-    expiresAt DATETIME NOT NULL,
-    ipAddress TEXT,
-    userAgent TEXT,
-    userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    expires_at INTEGER NOT NULL,
+    token TEXT UNIQUE NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    updated_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    ip_address TEXT,
+    user_agent TEXT,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE
 );
 
 -- Accounts (Better Auth)
 CREATE TABLE IF NOT EXISTS account (
     id TEXT PRIMARY KEY,
-    accountId TEXT NOT NULL,
-    providerId TEXT NOT NULL,
-    userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    accessToken TEXT,
-    refreshToken TEXT,
-    idToken TEXT,
-    expiresAt DATETIME,
-    password TEXT
+    account_id TEXT NOT NULL,
+    provider_id TEXT NOT NULL,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    access_token TEXT,
+    refresh_token TEXT,
+    id_token TEXT,
+    access_token_expires_at INTEGER,
+    refresh_token_expires_at INTEGER,
+    scope TEXT,
+    password TEXT,
+    created_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    updated_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer))
 );
 
 -- Verification (Better Auth)
@@ -36,7 +45,9 @@ CREATE TABLE IF NOT EXISTS verification (
     id TEXT PRIMARY KEY,
     identifier TEXT NOT NULL,
     value TEXT NOT NULL,
-    expiresAt DATETIME NOT NULL
+    expires_at INTEGER NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    updated_at INTEGER NOT NULL DEFAULT (cast(unixepoch('subsecond') * 1000 as integer))
 );
 
 -- Calendars
@@ -72,7 +83,7 @@ CREATE TABLE IF NOT EXISTS event_exceptions (
     id TEXT PRIMARY KEY,
     event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     original_start TEXT NOT NULL,
-    exception_type TEXT NOT NULL, -- 'modified' or 'deleted'
+    exception_type TEXT NOT NULL,
     title TEXT,
     start_time TEXT,
     end_time TEXT,
@@ -127,7 +138,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     end_time TEXT NOT NULL,
     status TEXT DEFAULT 'confirmed',
     confirmation_token TEXT UNIQUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at INTEGER DEFAULT (cast(unixepoch('subsecond') * 1000 as integer))
 );
 
 -- Resource Types
@@ -168,7 +179,7 @@ CREATE TABLE IF NOT EXISTS event_resources (
     UNIQUE(event_id, resource_id)
 );
 
--- Qualifications (skills/certifications for resources)
+-- Qualifications
 CREATE TABLE IF NOT EXISTS qualifications (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -184,7 +195,7 @@ CREATE TABLE IF NOT EXISTS resource_qualifications (
     UNIQUE(resource_id, qualification_id)
 );
 
--- Services (bookable offerings)
+-- Services
 CREATE TABLE IF NOT EXISTS services (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -192,29 +203,22 @@ CREATE TABLE IF NOT EXISTS services (
     description TEXT,
     color TEXT DEFAULT '#3b82f6',
     price_cents INTEGER,
-
-    -- Duration
     duration_minutes INTEGER NOT NULL,
     min_duration_minutes INTEGER,
     max_duration_minutes INTEGER,
-
-    -- Time constraints
-    operating_days TEXT NOT NULL DEFAULT '1,2,3,4,5', -- comma-separated: 0=Sun, 1=Mon, etc
+    operating_days TEXT NOT NULL DEFAULT '1,2,3,4,5',
     operating_start_time TEXT NOT NULL DEFAULT '09:00',
     operating_end_time TEXT NOT NULL DEFAULT '17:00',
     min_notice_hours INTEGER DEFAULT 24,
     max_advance_days INTEGER DEFAULT 30,
-
-    -- Booking rules
     buffer_minutes INTEGER DEFAULT 0,
-    max_concurrent_per_customer INTEGER DEFAULT 0, -- 0 = unlimited
+    max_concurrent_per_customer INTEGER DEFAULT 0,
     cancellation_hours INTEGER DEFAULT 4,
     requires_approval INTEGER DEFAULT 0,
-    capacity INTEGER DEFAULT 1, -- for classes
-
+    capacity INTEGER DEFAULT 1,
     is_active INTEGER DEFAULT 1,
     sort_order INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at INTEGER DEFAULT (cast(unixepoch('subsecond') * 1000 as integer))
 );
 
 -- Service Resource Requirements
@@ -224,35 +228,27 @@ CREATE TABLE IF NOT EXISTS service_resource_requirements (
     resource_type_id TEXT NOT NULL REFERENCES resource_types(id) ON DELETE CASCADE,
     quantity INTEGER NOT NULL DEFAULT 1,
     is_optional INTEGER DEFAULT 0,
-    required_qualifications TEXT -- JSON array of qualification IDs
+    required_qualifications TEXT
 );
 
--- Service Bookings (enhanced booking system)
+-- Service Bookings
 CREATE TABLE IF NOT EXISTS service_bookings (
     id TEXT PRIMARY KEY,
     service_id TEXT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
     event_id TEXT REFERENCES events(id) ON DELETE SET NULL,
-
-    -- Customer info
     customer_name TEXT NOT NULL,
     customer_email TEXT NOT NULL,
     customer_phone TEXT,
     customer_notes TEXT,
-
-    -- Timing
     start_time TEXT NOT NULL,
     end_time TEXT NOT NULL,
-
-    -- Status & workflow
-    status TEXT DEFAULT 'pending', -- pending, confirmed, cancelled, completed, no_show
-    approval_status TEXT, -- pending, approved, rejected
+    status TEXT DEFAULT 'pending',
+    approval_status TEXT,
     approved_by TEXT,
-    approved_at DATETIME,
-
-    -- Tracking
-    created_by TEXT, -- null = customer, otherwise staff ID
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    cancelled_at DATETIME,
+    approved_at INTEGER,
+    created_by TEXT,
+    created_at INTEGER DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)),
+    cancelled_at INTEGER,
     cancellation_reason TEXT
 );
 
@@ -276,5 +272,6 @@ CREATE INDEX IF NOT EXISTS idx_service_bookings_status ON service_bookings(statu
 CREATE INDEX IF NOT EXISTS idx_booking_assignments_resource ON booking_resource_assignments(resource_id);
 CREATE INDEX IF NOT EXISTS idx_qualifications_user ON qualifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_resource_qualifications_resource ON resource_qualifications(resource_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON session(userId);
-CREATE INDEX IF NOT EXISTS idx_accounts_user ON account(userId);
+CREATE INDEX IF NOT EXISTS idx_session_user ON session(user_id);
+CREATE INDEX IF NOT EXISTS idx_account_user ON account(user_id);
+CREATE INDEX IF NOT EXISTS idx_verification_identifier ON verification(identifier);
