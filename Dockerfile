@@ -32,7 +32,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 
 # Copy schema.sql for database initialization (read at runtime)
-COPY --from=builder /app/src/lib/server/db/schema.sql ./build/server/schema.sql
+COPY --from=builder /app/src/lib/server/db/schema.sql ./schema.sql
 
 # Create data directory for SQLite database
 RUN mkdir -p /app/data

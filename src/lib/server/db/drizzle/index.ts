@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import { dirname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync } from 'fs';
 
 import * as schema from './schema';
 
@@ -18,6 +18,26 @@ if (!existsSync(dbDir)) {
 const sqlite = new Database(DB_PATH);
 sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = ON');
+
+// Initialize schema - try multiple locations for schema.sql
+const schemaPaths = [
+	process.env.SCHEMA_PATH,
+	join(process.cwd(), 'schema.sql'),
+	'/app/schema.sql'
+].filter(Boolean) as string[];
+
+for (const schemaPath of schemaPaths) {
+	if (existsSync(schemaPath)) {
+		try {
+			const schemaSql = readFileSync(schemaPath, 'utf-8');
+			sqlite.exec(schemaSql);
+			console.log(`Database schema initialized from ${schemaPath}`);
+			break;
+		} catch (err) {
+			console.error(`Failed to initialize schema from ${schemaPath}:`, err);
+		}
+	}
+}
 
 // Create Drizzle client with schema
 export const db = drizzle(sqlite, { schema });
