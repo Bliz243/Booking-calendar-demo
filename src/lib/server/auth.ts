@@ -62,6 +62,9 @@ export const auth = betterAuth({
 		}
 	},
 	trustedOrigins: (process.env.ALLOWED_ORIGINS || 'http://localhost:5173').split(','),
+	experimental: {
+		joins: true // 2-3x performance improvement for session fetching
+	},
 	plugins: [sveltekitCookies(getRequestEvent)] // must be last plugin
 });
 
