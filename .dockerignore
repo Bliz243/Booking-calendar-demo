@@ -1,0 +1,37 @@
+# Dependencies
+node_modules
+
+# Build output
+build
+.svelte-kit
+
+# Environment files (secrets)
+.env
+.env.*
+!.env.example
+
+# Development files
+.git
+.gitignore
+.vscode
+.idea
+*.md
+docs
+
+# Test files
+src/tests
+*.test.ts
+*.spec.ts
+coverage
+vitest.config.ts
+
+# Local database (use volume mount instead)
+data
+*.db
+*.db-wal
+*.db-shm
+
+# IDE and OS files
+.DS_Store
+*.swp
+*.swo
