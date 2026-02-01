@@ -1,16 +1,7 @@
 import { createAuthClient } from 'better-auth/svelte';
 
-// Use current origin in browser, or env var for SSR
-const getBaseURL = () => {
-	if (typeof window !== 'undefined') {
-		return window.location.origin;
-	}
-	return import.meta.env.VITE_BETTER_AUTH_URL || '';
-};
-
-export const authClient = createAuthClient({
-	baseURL: getBaseURL()
-});
+// No baseURL needed when auth server is on the same domain
+export const authClient = createAuthClient();
 
 // Re-export commonly used hooks and functions
 export const { signIn, signOut, signUp, useSession, getSession, $Infer } = authClient;
